@@ -1,0 +1,1522 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="UTF-8" />
+    <title>b-side</title>
+    <meta
+      name="viewport"
+      content="viewport-fit=cover, width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+    <meta name="format-detection" content="telephone=no" />
+    <meta name="msapplication-tap-highlight" content="no" />
+    <script>
+      var favoriteArtists = {};
+      var favoriteSongs = {};
+
+      var favoriteArtistsEditTemp = {};
+      var favoriteSongsEditTemp = {};
+
+      function changeScn(id) {
+        var scenes = document.getElementsByClassName("scn");
+        for (var i = 0; i < scenes.length; i++) {
+          scenes.item(i).classList.add("hidden");
+        }
+        document
+          .getElementById(document.getElementById(id).dataset.target)
+          .classList.remove("hidden");
+      }
+
+      function showHome() {
+        refreshHome();
+        var scenes = document.getElementsByClassName("scn");
+        for (var i = 0; i < scenes.length; i++) {
+          scenes.item(i).classList.add("hidden");
+        }
+        favoriteArtists = JSON.parse(localStorage.getItem("favoriteArtists"));
+        favoriteSongs = JSON.parse(localStorage.getItem("favoriteSongs"));
+        document.getElementById("home").classList.remove("hidden");
+      }
+
+      function showWelcome() {
+        var scenes = document.getElementsByClassName("scn");
+        for (var i = 0; i < scenes.length; i++) {
+          scenes.item(i).classList.add("hidden");
+        }
+        document.getElementById("welcome").classList.remove("hidden");
+      }
+
+      function showNotifsPrompt() {
+        var scenes = document.getElementsByClassName("scn");
+        for (var i = 0; i < scenes.length; i++) {
+          scenes.item(i).classList.add("hidden");
+        }
+        document.getElementById("notifsPrompt").classList.remove("hidden");
+      }
+      function searchArtists() {
+        var artist_input = document.getElementById("artist-input").value;
+        if (artist_input !== "") {
+          var xhttp = new XMLHttpRequest();
+          var results = document.getElementById("results-div");
+          results.innerHTML = `
+              <div role="status" class='w-full flex justify-center'>
+                  <svg aria-hidden="true" class="w-8 h-8 text-neutral-200 animate-spin fill-amber-400" viewBox="0 0 100 101" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M100 50.5908C100 78.2051 77.6142 100.591 50 100.591C22.3858 100.591 0 78.2051 0 50.5908C0 22.9766 22.3858 0.59082 50 0.59082C77.6142 0.59082 100 22.9766 100 50.5908ZM9.08144 50.5908C9.08144 73.1895 27.4013 91.5094 50 91.5094C72.5987 91.5094 90.9186 73.1895 90.9186 50.5908C90.9186 27.9921 72.5987 9.67226 50 9.67226C27.4013 9.67226 9.08144 27.9921 9.08144 50.5908Z" fill="currentColor"/>
+                      <path d="M93.9676 39.0409C96.393 38.4038 97.8624 35.9116 97.0079 33.5539C95.2932 28.8227 92.871 24.3692 89.8167 20.348C85.8452 15.1192 80.8826 10.7238 75.2124 7.41289C69.5422 4.10194 63.2754 1.94025 56.7698 1.05124C51.7666 0.367541 46.6976 0.446843 41.7345 1.27873C39.2613 1.69328 37.813 4.19778 38.4501 6.62326C39.0873 9.04874 41.5694 10.4717 44.0505 10.1071C47.8511 9.54855 51.7191 9.52689 55.5402 10.0491C60.8642 10.7766 65.9928 12.5457 70.6331 15.2552C75.2735 17.9648 79.3347 21.5619 82.5849 25.841C84.9175 28.9121 86.7997 32.2913 88.1811 35.8758C89.083 38.2158 91.5421 39.6781 93.9676 39.0409Z" fill="currentFill"/>
+                  </svg>
+                  <span class="sr-only">Loading...</span>
+              </div>
+              `;
+          xhttp.onreadystatechange = function () {
+            if (this.readyState == 4 && this.status == 200) {
+              // Typical action to be performed when the document is ready:
+              results.innerText = "";
+              for (let i = 0; i < JSON.parse(this.response).length; i++) {
+                var artistDiv = document.createElement("div");
+                var artistImg = document.createElement("img");
+                artistImg.src = JSON.parse(this.response)[i]["images"][0][
+                  "url"
+                ];
+                artistImg.classList.add(
+                  "rounded-lg",
+                  "h-20",
+                  "object-cover",
+                  "w-20"
+                );
+                artistDiv.append(artistImg);
+                artistDiv.classList.add(
+                  "rounded-lg",
+                  "border",
+                  "border-neutral-200",
+                  "bg-white",
+                  "flex",
+                  "gap-5",
+                  "p-2"
+                );
+                var infoDiv = document.createElement("div");
+                var artistName = document.createElement("h2");
+                artistName.innerText = JSON.parse(this.response)[i]["name"];
+                artistName.classList.add("font-bold", "text-neutral-800");
+                var likeBtn = document.createElement("button");
+                likeBtn.addEventListener("click", () => {
+                  haptic();
+                });
+                likeBtn.innerText = "♥ Like";
+                infoDiv.append(artistName);
+                likeBtn.classList.add("text-amber-400", "underline");
+                var id = JSON.parse(this.response)[i]["id"];
+                likeBtn.id = id;
+                likeBtn.onclick = (e) => {
+                  likeArtist(e);
+                  checkForNextBtn();
+                };
+                infoDiv.append(likeBtn);
+                artistDiv.append(infoDiv);
+                results.append(artistDiv);
+                document.getElementById("artist-input").value = "";
+              }
+            }
+          };
+          xhttp.open(
+            "GET",
+            "https://songtunnel.azurewebsites.net/api/search-artists/?artist=" +
+              artist_input,
+            true
+          );
+          xhttp.send();
+        }
+      }
+      function likeArtist(e) {
+        if (!favoriteArtists.hasOwnProperty(e.target.id)) {
+          var likedSongs = document.getElementById("my-artists");
+          var caller = e.target;
+          var artistDiv = document.createElement("div");
+          var artistImg = document.createElement("img");
+          artistImg.src = caller.parentElement.parentElement.children[0].src;
+          artistImg.classList.add("rounded-lg", "h-20", "object-cover", "w-20");
+          artistDiv.append(artistImg);
+          artistDiv.classList.add(
+            "rounded-lg",
+            "border",
+            "border-neutral-200",
+            "bg-white",
+            "flex",
+            "gap-5",
+            "p-2"
+          );
+          var infoDiv = document.createElement("div");
+          var artistName = document.createElement("h2");
+          artistName.innerText =
+            caller.parentElement.parentElement.children[1].children[0].innerText;
+          artistName.classList.add("font-bold", "text-neutral-800");
+          var likeBtn = document.createElement("button");
+          likeBtn.addEventListener("click", () => {
+            haptic();
+          });
+          likeBtn.innerText = "Remove";
+          infoDiv.append(artistName);
+          likeBtn.classList.add("text-amber-400", "underline");
+          likeBtn.id = "remove-" + caller.id;
+          favoriteArtists[caller.id] = {};
+          likeBtn.onclick = (e) => {
+            removeArtist(e);
+          };
+          infoDiv.append(likeBtn);
+          artistDiv.append(infoDiv);
+          likedSongs.append(artistDiv);
+        }
+      }
+
+      function removeArtist(e) {
+        id = e.target.id.substring(7);
+        e.target.parentElement.parentElement.remove();
+        delete favoriteArtists[id];
+        checkForNextBtn();
+      }
+
+      function checkForNextBtn() {
+        if (Object.keys(favoriteArtists).length >= 5) {
+          var nextBtn = document.getElementById("next-btn");
+          nextBtn.disabled = false;
+          nextBtn.classList.remove("bg-neutral-200");
+          nextBtn.classList.remove("text-neutral-600");
+          nextBtn.classList.add(
+            "bg-amber-400",
+            "text-neutral-800",
+            "font-bold"
+          );
+        } else {
+          var nextBtn = document.getElementById("next-btn");
+          nextBtn.disabled = true;
+          nextBtn.classList.add("bg-neutral-200", "text-neutral-600");
+          nextBtn.classList.remove("bg-amber-400");
+          nextBtn.classList.remove("text-neutral-800");
+          nextBtn.classList.remove("font-bold");
+        }
+      }
+
+      function searchSongs() {
+        var song_input = document.getElementById("song-input").value;
+        if (song_input !== "") {
+          var xhttp = new XMLHttpRequest();
+          var results = document.getElementById("song-results-div");
+          results.innerHTML = `
+              <div role="status" class='w-full flex justify-center'>
+                  <svg aria-hidden="true" class="w-8 h-8 text-neutral-200 animate-spin fill-amber-400" viewBox="0 0 100 101" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M100 50.5908C100 78.2051 77.6142 100.591 50 100.591C22.3858 100.591 0 78.2051 0 50.5908C0 22.9766 22.3858 0.59082 50 0.59082C77.6142 0.59082 100 22.9766 100 50.5908ZM9.08144 50.5908C9.08144 73.1895 27.4013 91.5094 50 91.5094C72.5987 91.5094 90.9186 73.1895 90.9186 50.5908C90.9186 27.9921 72.5987 9.67226 50 9.67226C27.4013 9.67226 9.08144 27.9921 9.08144 50.5908Z" fill="currentColor"/>
+                      <path d="M93.9676 39.0409C96.393 38.4038 97.8624 35.9116 97.0079 33.5539C95.2932 28.8227 92.871 24.3692 89.8167 20.348C85.8452 15.1192 80.8826 10.7238 75.2124 7.41289C69.5422 4.10194 63.2754 1.94025 56.7698 1.05124C51.7666 0.367541 46.6976 0.446843 41.7345 1.27873C39.2613 1.69328 37.813 4.19778 38.4501 6.62326C39.0873 9.04874 41.5694 10.4717 44.0505 10.1071C47.8511 9.54855 51.7191 9.52689 55.5402 10.0491C60.8642 10.7766 65.9928 12.5457 70.6331 15.2552C75.2735 17.9648 79.3347 21.5619 82.5849 25.841C84.9175 28.9121 86.7997 32.2913 88.1811 35.8758C89.083 38.2158 91.5421 39.6781 93.9676 39.0409Z" fill="currentFill"/>
+                  </svg>
+                  <span class="sr-only">Loading...</span>
+              </div>
+              `;
+          xhttp.onreadystatechange = function () {
+            if (this.readyState == 4 && this.status == 200) {
+              // Typical action to be performed when the document is ready:
+              results.innerText = "";
+              for (let i = 0; i < JSON.parse(this.response).length; i++) {
+                var songDiv = document.createElement("div");
+                var songImg = document.createElement("img");
+                songImg.src = JSON.parse(this.response)[i]["album"][
+                  "images"
+                ][0]["url"];
+                songImg.classList.add(
+                  "rounded-lg",
+                  "h-20",
+                  "object-cover",
+                  "w-20"
+                );
+                songDiv.append(songImg);
+                songDiv.classList.add(
+                  "rounded-lg",
+                  "border",
+                  "border-neutral-200",
+                  "bg-white",
+                  "flex",
+                  "gap-5",
+                  "p-2"
+                );
+                var infoDiv = document.createElement("div");
+                var songName = document.createElement("h2");
+                songName.innerText = JSON.parse(this.response)[i]["name"];
+                songName.classList.add("font-bold", "text-neutral-800");
+                var artistName = document.createElement("p");
+                artistName.innerText = JSON.parse(this.response)[i][
+                  "artists"
+                ][0]["name"];
+                artistName.classList.add("text-neutral-800");
+                var likeBtn = document.createElement("button");
+                likeBtn.addEventListener("click", () => {
+                  haptic();
+                });
+                likeBtn.innerText = "♥ Like";
+                infoDiv.append(songName);
+                infoDiv.append(artistName);
+                likeBtn.classList.add("text-amber-400", "underline");
+                var id = JSON.parse(this.response)[i]["id"];
+                likeBtn.id = id;
+                likeBtn.onclick = (e) => {
+                  likeSong(e);
+                  checkForFinishBtn();
+                };
+                infoDiv.append(likeBtn);
+                songDiv.append(infoDiv);
+                results.append(songDiv);
+                document.getElementById("song-input").value = "";
+              }
+            }
+          };
+        }
+        xhttp.open(
+          "GET",
+          "https://songtunnel.azurewebsites.net/api/search-tracks/?track=" +
+            song_input,
+          true
+        );
+        xhttp.send();
+      }
+
+      function likeSong(e) {
+        if (!favoriteSongs.hasOwnProperty(e.target.id)) {
+          var likedSongs = document.getElementById("my-songs");
+          var caller = e.target;
+          var songDiv = document.createElement("div");
+          var songImg = document.createElement("img");
+          songImg.src = caller.parentElement.parentElement.children[0].src;
+          songImg.classList.add("rounded-lg", "h-20", "object-cover", "w-20");
+          songDiv.append(songImg);
+          songDiv.classList.add(
+            "rounded-lg",
+            "border",
+            "border-neutral-200",
+            "bg-white",
+            "flex",
+            "gap-5",
+            "p-2"
+          );
+          var infoDiv = document.createElement("div");
+          var songName = document.createElement("h2");
+          songName.innerText =
+            caller.parentElement.parentElement.children[1].children[0].innerText;
+          songName.classList.add("font-bold", "text-neutral-800");
+          var likeBtn = document.createElement("button");
+          likeBtn.addEventListener("click", () => {
+            haptic();
+          });
+          likeBtn.innerText = "Remove";
+          infoDiv.append(songName);
+          likeBtn.classList.add("text-amber-400", "underline");
+          likeBtn.id = "remove-" + caller.id;
+          favoriteSongs[caller.id] = {};
+          likeBtn.onclick = (e) => {
+            removeSong(e);
+          };
+          infoDiv.append(likeBtn);
+          songDiv.append(infoDiv);
+          likedSongs.append(songDiv);
+        }
+      }
+
+      function removeSong(e) {
+        id = e.target.id.substring(7);
+        e.target.parentElement.parentElement.remove();
+        delete favoriteSongs[id];
+        checkForFinishBtn();
+      }
+
+      function checkForFinishBtn() {
+        if (Object.keys(favoriteSongs).length >= 5) {
+          var finishBtn = document.getElementById("finish-btn");
+          finishBtn.disabled = false;
+          finishBtn.classList.remove("bg-neutral-200");
+          finishBtn.classList.remove("text-neutral-600");
+          finishBtn.classList.add(
+            "bg-amber-400",
+            "text-neutral-800",
+            "font-bold"
+          );
+        } else {
+          var finishBtn = document.getElementById("finish-btn");
+          finishBtn.disabled = true;
+          finishBtn.classList.add("bg-neutral-200", "text-neutral-600");
+          finishBtn.classList.remove("bg-amber-400");
+          finishBtn.classList.remove("text-neutral-800");
+          finishBtn.classList.remove("font-bold");
+        }
+      }
+
+      var obscurityLevels = {
+        "10": `<b>Very Underground</b><br>
+        You probably won't have heard of these songs or the artists that made them. But that's a good thing.`,
+        "20": `<b>Somewhat Underground</b><br>
+        You probably won't have heard of these songs, but they will be usually be by artists with some recognition.`,
+        "30": `<b>Up and coming</b><br>
+        These songs will already have some listens, but you'll still get some new finds daily.`,
+        "40": `<b>Not too obscure</b><br>
+        These songs will probably be the most well-produced and be made by the most established artists.`,
+      }
+
+      function getUndergroundTrack() {
+        var scenes = document.getElementsByClassName("scn");
+        for (var i = 0; i < scenes.length; i++) {
+          scenes.item(i).classList.add("hidden");
+        }
+        document.getElementById("songRecDisplay").classList.remove("hidden");
+
+        var useArtist = Boolean(Date.now() % 2);
+        if (useArtist) {
+          var artistID =
+            Object.keys(favoriteArtists)[
+              Math.floor(Math.random() * Object.keys(favoriteArtists).length)
+            ];
+          var xhttp = new XMLHttpRequest();
+          xhttp.onreadystatechange = function () {
+            if (this.readyState == 4 && this.status == 200) {
+              var tracks = JSON.parse(this.response)["tracks"];
+              var trackID =
+                tracks[Math.floor(Math.random() * tracks.length)]["id"];
+              var xhttp = new XMLHttpRequest();
+              xhttp.onreadystatechange = function () {
+                if (this.readyState == 4 && this.status == 200) {
+                  var song = JSON.parse(this.response);
+                  var recommendedDiv =
+                    document.getElementById("recommended-track");
+                  recommendedDiv.innerHTML = "";
+                  var songImg = document.createElement("img");
+                  songImg.src = song["album"]["images"][0]["url"];
+                  songImg.classList.add("rounded-lg");
+                  var songTitle = document.createElement("h2");
+                  songTitle.classList.add("font-bold");
+                  songTitle.classList.add("text-xl");
+                  songTitle.classList.add("text-neutral-800");
+                  songTitle.innerText = song["name"];
+                  var songArtist = document.createElement("p");
+                  songArtist.innerText = song["artists"][0]["name"];
+                  songArtist.classList.add("text-neutral-800");
+                  var spotifyBtn = document.createElement("a");
+                  spotifyBtn.classList.add(
+                    "p-4",
+                    "rounded-full",
+                    "bg-neutral-800",
+                    "flex",
+                    "font-bold",
+                    "items-center",
+                    "gap-2",
+                    "no-underline"
+                  );
+                  spotifyBtn.href = song["external_urls"]["spotify"];
+                  var spotifyImg = document.createElement("img");
+                  spotifyImg.classList.add("h-7", "w-7");
+                  spotifyImg.src = spotifyLogo;
+                  var spotifyText = document.createElement("p");
+                  spotifyText.innerText = "Open Spotify";
+                  spotifyText.classList.add("text-white");
+                  spotifyBtn.append(spotifyImg);
+                  spotifyBtn.append(spotifyText);
+                  recommendedDiv.append(songImg);
+                  recommendedDiv.append(songTitle);
+                  recommendedDiv.append(songArtist);
+                  recommendedDiv.append(spotifyBtn);
+                  /*document.getElementById("recommended-track").innerHTML = 
+                    `
+                    <iframe style="border-radius:12px" src="https://open.spotify.com/embed/track/${song['id']}?utm_source=generator&theme=0" width="100%" height="152" frameBorder="0" allowfullscreen="" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>
+                    `*/
+                  setLastSongFetch(song);
+                }
+              };
+              xhttp.open(
+                "GET",
+                "https://songtunnel.azurewebsites.net/api/find-track/?track=" +
+                trackID +
+                "&threshold=20",
+                true
+              );
+              xhttp.send();
+            }
+          };
+          xhttp.open(
+            "GET",
+            "https://songtunnel.azurewebsites.net/api/artist-top-tracks/?track=" +
+              artistID,
+            true
+          );
+          xhttp.send();
+        } else {
+          var trackID =
+            Object.keys(favoriteSongs)[
+              Math.floor(Math.random() * Object.keys(favoriteSongs).length)
+            ];
+          var xhttp = new XMLHttpRequest();
+          xhttp.onreadystatechange = function () {
+            if (this.readyState == 4 && this.status == 200) {
+              var song = JSON.parse(this.response);
+              var recommendedDiv = document.getElementById("recommended-track");
+              recommendedDiv.innerHTML = "";
+              recommendedDiv.classList.add(
+                "rounded-lg",
+                "border",
+                "border-neutral-200",
+                "flex",
+                "flex-col",
+                "gap-3",
+                "p-4"
+              );
+              var songImg = document.createElement("img");
+              songImg.src = song["album"]["images"][0]["url"];
+              songImg.classList.add("rounded-lg");
+              var songTitle = document.createElement("h2");
+              songTitle.classList.add(
+                "font-bold",
+                "text-xl",
+                "text-neutral-800"
+              );
+              songTitle.innerText = song["name"];
+              var songArtist = document.createElement("p");
+              songArtist.innerText = song["artists"][0]["name"];
+              songArtist.classList.add("text-neutral-800");
+              var spotifyBtn = document.createElement("a");
+              spotifyBtn.classList.add(
+                "p-4",
+                "rounded-full",
+                "bg-neutral-800",
+                "flex",
+                "font-bold",
+                "items-center",
+                "gap-2",
+                "no-underline"
+              );
+              spotifyBtn.href = song["external_urls"]["spotify"];
+              var spotifyImg = document.createElement("img");
+              spotifyImg.classList.add("h-7", "w-7");
+              spotifyImg.src = spotifyLogo;
+              var spotifyText = document.createElement("p");
+              spotifyText.innerText = "Open Spotify";
+              spotifyText.classList.add("text-white");
+              spotifyBtn.append(spotifyImg);
+              spotifyBtn.append(spotifyText);
+              recommendedDiv.append(songImg);
+              recommendedDiv.append(songTitle);
+              recommendedDiv.append(songArtist);
+              recommendedDiv.append(spotifyBtn);
+              /*document.getElementById("recommended-track").innerHTML = 
+                `
+                <iframe style="border-radius:12px" src="https://open.spotify.com/embed/track/${song['id']}?utm_source=generator&theme=0" width="100%" height="152" frameBorder="0" allowfullscreen="" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>
+                `*/
+              setLastSongFetch(song);
+            }
+          };
+          xhttp.open(
+            "GET",
+            "https://songtunnel.azurewebsites.net/api/find-track/?track=" +
+              trackID +
+              "&threshold=20",
+            true
+          );
+          xhttp.send();
+        }
+      }
+
+      function showSettings() {
+        var scenes = document.getElementsByClassName("scn");
+        for (var i = 0; i < scenes.length; i++) {
+          scenes.item(i).classList.add("hidden");
+        }
+        document.getElementById("settings").classList.remove("hidden");
+      }
+
+      function setMySongsEdit() {
+        var mySongsEdit = document.getElementById("my-songs-edit");
+        favoriteSongsEditTemp = favoriteSongs;
+        var songIDs = Object.keys(
+          JSON.parse(localStorage.getItem("favoriteSongs"))
+        );
+        for (var i = 0; i < songIDs.length; i++) {
+          createSongEdit(songIDs, i);
+        }
+      }
+
+      function createSongEdit(songIDs, i) {
+        var xhttp = new XMLHttpRequest();
+        xhttp.onreadystatechange = function () {
+          if (this.readyState == 4 && this.status == 200) {
+            var song = JSON.parse(this.response);
+            var songDiv = document.createElement("div");
+            var songImg = document.createElement("img");
+            songImg.src = song["album"]["images"][0]["url"];
+            songImg.classList.add("rounded-lg", "h-20", "object-cover", "w-20");
+            songDiv.append(songImg);
+            songDiv.classList.add(
+              "rounded-lg",
+              "border",
+              "border-neutral-200",
+              "bg-white",
+              "flex",
+              "gap-5",
+              "p-2"
+            );
+            var infoDiv = document.createElement("div");
+            var songName = document.createElement("h2");
+            songName.innerText = song["name"];
+            songName.classList.add("font-bold", "text-neutral-800");
+            var likeBtn = document.createElement("button");
+            likeBtn.addEventListener("click", () => {
+              haptic();
+            });
+            likeBtn.innerText = "Remove";
+            infoDiv.append(songName);
+            likeBtn.classList.add("text-amber-400", "underline");
+            likeBtn.id = "remove-edit-song-" + songIDs[i];
+            likeBtn.onclick = (e) => {
+              removeEditSong(e);
+            };
+            infoDiv.append(likeBtn);
+            songDiv.append(infoDiv);
+            document.getElementById("my-songs-edit").append(songDiv);
+          }
+        };
+        xhttp.open(
+          "GET",
+          "https://songtunnel.azurewebsites.net/api/track-info/?id=" +
+            songIDs[i],
+          true
+        );
+        xhttp.send();
+      }
+
+      function setMyArtistsEdit() {
+        var myArtistsEdit = document.getElementById("my-artists-edit");
+        favoriteArtistsEditTemp = favoriteArtists;
+        var artistIDs = Object.keys(
+          JSON.parse(localStorage.getItem("favoriteArtists"))
+        );
+        for (var i = 0; i < artistIDs.length; i++) {
+          createArtistEdit(artistIDs, i);
+        }
+      }
+
+      function createArtistEdit(artistIDs, i) {
+        var xhttp = new XMLHttpRequest();
+        xhttp.onreadystatechange = function () {
+          if (this.readyState == 4 && this.status == 200) {
+            var artist = JSON.parse(this.response);
+            var artistDiv = document.createElement("div");
+            var artistImg = document.createElement("img");
+            artistImg.src = artist["images"][0]["url"];
+            artistImg.classList.add(
+              "rounded-lg",
+              "h-20",
+              "object-cover",
+              "w-20"
+            );
+            artistDiv.append(artistImg);
+            artistDiv.classList.add(
+              "rounded-lg",
+              "border",
+              "border-neutral-200",
+              "bg-white",
+              "flex",
+              "gap-5",
+              "p-2"
+            );
+            var infoDiv = document.createElement("div");
+            var artistName = document.createElement("h2");
+            artistName.innerText = artist["name"];
+            artistName.classList.add("font-bold", "text-neutral-800");
+            var likeBtn = document.createElement("button");
+            likeBtn.addEventListener("click", () => {
+              haptic();
+            });
+            likeBtn.innerText = "Remove";
+            infoDiv.append(artistName);
+            likeBtn.classList.add("text-amber-400", "underline");
+            likeBtn.id = "remove-edit-artist-" + artistIDs[i];
+            likeBtn.onclick = (e) => {
+              removeEditArtist(e);
+            };
+            infoDiv.append(likeBtn);
+            artistDiv.append(infoDiv);
+            document.getElementById("my-artists-edit").append(artistDiv);
+          }
+        };
+        xhttp.open(
+          "GET",
+          "https://songtunnel.azurewebsites.net/api/artist-info/?id=" +
+            artistIDs[i],
+          true
+        );
+        xhttp.send();
+      }
+
+      function searchEditSongs() {
+        var song_input = document.getElementById("song-edit-input").value;
+        if (song_input !== "") {
+          var xhttp = new XMLHttpRequest();
+          var results = document.getElementById("song-edit-results-div");
+          results.innerHTML = `
+              <div role="status" class='w-full flex justify-center'>
+                  <svg aria-hidden="true" class="w-8 h-8 text-neutral-200 animate-spin fill-amber-400" viewBox="0 0 100 101" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M100 50.5908C100 78.2051 77.6142 100.591 50 100.591C22.3858 100.591 0 78.2051 0 50.5908C0 22.9766 22.3858 0.59082 50 0.59082C77.6142 0.59082 100 22.9766 100 50.5908ZM9.08144 50.5908C9.08144 73.1895 27.4013 91.5094 50 91.5094C72.5987 91.5094 90.9186 73.1895 90.9186 50.5908C90.9186 27.9921 72.5987 9.67226 50 9.67226C27.4013 9.67226 9.08144 27.9921 9.08144 50.5908Z" fill="currentColor"/>
+                      <path d="M93.9676 39.0409C96.393 38.4038 97.8624 35.9116 97.0079 33.5539C95.2932 28.8227 92.871 24.3692 89.8167 20.348C85.8452 15.1192 80.8826 10.7238 75.2124 7.41289C69.5422 4.10194 63.2754 1.94025 56.7698 1.05124C51.7666 0.367541 46.6976 0.446843 41.7345 1.27873C39.2613 1.69328 37.813 4.19778 38.4501 6.62326C39.0873 9.04874 41.5694 10.4717 44.0505 10.1071C47.8511 9.54855 51.7191 9.52689 55.5402 10.0491C60.8642 10.7766 65.9928 12.5457 70.6331 15.2552C75.2735 17.9648 79.3347 21.5619 82.5849 25.841C84.9175 28.9121 86.7997 32.2913 88.1811 35.8758C89.083 38.2158 91.5421 39.6781 93.9676 39.0409Z" fill="currentFill"/>
+                  </svg>
+                  <span class="sr-only">Loading...</span>
+              </div>
+              `;
+          xhttp.onreadystatechange = function () {
+            if (this.readyState == 4 && this.status == 200) {
+              // Typical action to be performed when the document is ready:
+              results.innerText = "";
+              for (let i = 0; i < JSON.parse(this.response).length; i++) {
+                var songDiv = document.createElement("div");
+                var songImg = document.createElement("img");
+                songImg.src = JSON.parse(this.response)[i]["album"][
+                  "images"
+                ][0]["url"];
+                songImg.classList.add(
+                  "rounded-lg",
+                  "h-20",
+                  "object-cover",
+                  "w-20"
+                );
+                songDiv.append(songImg);
+                songDiv.classList.add(
+                  "rounded-lg",
+                  "border",
+                  "border-neutral-200",
+                  "bg-white",
+                  "flex",
+                  "gap-5",
+                  "p-2"
+                );
+                var infoDiv = document.createElement("div");
+                var songName = document.createElement("h2");
+                songName.innerText = JSON.parse(this.response)[i]["name"];
+                songName.classList.add("font-bold", "text-neutral-800");
+                var artistName = document.createElement("p");
+                artistName.innerText = JSON.parse(this.response)[i][
+                  "artists"
+                ][0]["name"];
+                artistName.classList.add("text-neutral-800");
+                var likeBtn = document.createElement("button");
+                likeBtn.addEventListener("click", () => {
+                  haptic();
+                });
+                likeBtn.innerText = "♥ Like";
+                infoDiv.append(songName);
+                infoDiv.append(artistName);
+                likeBtn.classList.add("text-amber-400", "underline");
+                var id = JSON.parse(this.response)[i]["id"];
+                likeBtn.id = "edit-song-" + id;
+                likeBtn.onclick = (e) => {
+                  likeEditSong(e);
+                  checkForSongSaveBtn();
+                };
+                infoDiv.append(likeBtn);
+                songDiv.append(infoDiv);
+                results.append(songDiv);
+                document.getElementById("song-edit-input").value = "";
+              }
+            }
+          };
+        }
+        xhttp.open(
+          "GET",
+          "https://songtunnel.azurewebsites.net/api/search-tracks/?track=" +
+            song_input,
+          true
+        );
+        xhttp.send();
+      }
+      function searchEditArtists() {
+        var artist_input = document.getElementById("artist-edit-input").value;
+        if (artist_input !== "") {
+          var xhttp = new XMLHttpRequest();
+          var results = document.getElementById("artist-edit-results-div");
+          results.innerHTML = `
+              <div role="status" class='w-full flex justify-center'>
+                  <svg aria-hidden="true" class="w-8 h-8 text-neutral-200 animate-spin fill-amber-400" viewBox="0 0 100 101" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M100 50.5908C100 78.2051 77.6142 100.591 50 100.591C22.3858 100.591 0 78.2051 0 50.5908C0 22.9766 22.3858 0.59082 50 0.59082C77.6142 0.59082 100 22.9766 100 50.5908ZM9.08144 50.5908C9.08144 73.1895 27.4013 91.5094 50 91.5094C72.5987 91.5094 90.9186 73.1895 90.9186 50.5908C90.9186 27.9921 72.5987 9.67226 50 9.67226C27.4013 9.67226 9.08144 27.9921 9.08144 50.5908Z" fill="currentColor"/>
+                      <path d="M93.9676 39.0409C96.393 38.4038 97.8624 35.9116 97.0079 33.5539C95.2932 28.8227 92.871 24.3692 89.8167 20.348C85.8452 15.1192 80.8826 10.7238 75.2124 7.41289C69.5422 4.10194 63.2754 1.94025 56.7698 1.05124C51.7666 0.367541 46.6976 0.446843 41.7345 1.27873C39.2613 1.69328 37.813 4.19778 38.4501 6.62326C39.0873 9.04874 41.5694 10.4717 44.0505 10.1071C47.8511 9.54855 51.7191 9.52689 55.5402 10.0491C60.8642 10.7766 65.9928 12.5457 70.6331 15.2552C75.2735 17.9648 79.3347 21.5619 82.5849 25.841C84.9175 28.9121 86.7997 32.2913 88.1811 35.8758C89.083 38.2158 91.5421 39.6781 93.9676 39.0409Z" fill="currentFill"/>
+                  </svg>
+                  <span class="sr-only">Loading...</span>
+              </div>
+              `;
+          xhttp.onreadystatechange = function () {
+            if (this.readyState == 4 && this.status == 200) {
+              // Typical action to be performed when the document is ready:
+              results.innerText = "";
+              for (let i = 0; i < JSON.parse(this.response).length; i++) {
+                var artistDiv = document.createElement("div");
+                var artistImg = document.createElement("img");
+                artistImg.src = JSON.parse(this.response)[i]["images"][0][
+                  "url"
+                ];
+                artistImg.classList.add(
+                  "rounded-lg",
+                  "h-20",
+                  "object-cover",
+                  "w-20"
+                );
+                artistDiv.append(artistImg);
+                artistDiv.classList.add(
+                  "rounded-lg",
+                  "border",
+                  "border-neutral-200",
+                  "bg-white",
+                  "flex",
+                  "gap-5",
+                  "p-2"
+                );
+                var infoDiv = document.createElement("div");
+                var artistName = document.createElement("h2");
+                artistName.innerText = JSON.parse(this.response)[i]["name"];
+                artistName.classList.add("font-bold", "text-neutral-800");
+                var likeBtn = document.createElement("button");
+                likeBtn.addEventListener("click", () => {
+                  haptic();
+                });
+                likeBtn.innerText = "♥ Like";
+                infoDiv.append(artistName);
+                likeBtn.classList.add("text-amber-400", "underline");
+                var id = JSON.parse(this.response)[i]["id"];
+                likeBtn.id = "edit-artist-" + id;
+                likeBtn.onclick = (e) => {
+                  likeEditArtist(e);
+                  checkForArtistSaveBtn();
+                };
+                infoDiv.append(likeBtn);
+                artistDiv.append(infoDiv);
+                results.append(artistDiv);
+                document.getElementById("artist-edit-input").value = "";
+              }
+            }
+          };
+          xhttp.open(
+            "GET",
+            "https://songtunnel.azurewebsites.net/api/search-artists/?artist=" +
+              artist_input,
+            true
+          );
+          xhttp.send();
+        }
+      }
+
+      function removeEditSong(e) {
+        var id = e.target.id.substring(17);
+        e.target.parentElement.parentElement.remove();
+        delete favoriteSongsEditTemp[id];
+        checkForSongSaveBtn();
+      }
+
+      function removeEditArtist(e) {
+        var id = e.target.id.substring(19);
+        e.target.parentElement.parentElement.remove();
+        delete favoriteArtistsEditTemp[id];
+        checkForArtistSaveBtn();
+      }
+
+      function likeEditSong(e) {
+        var songID = e.target.id.substring(10);
+        if (!favoriteSongsEditTemp.hasOwnProperty(songID)) {
+          var likedSongs = document.getElementById("my-songs-edit");
+          var caller = e.target;
+          var songDiv = document.createElement("div");
+          var songImg = document.createElement("img");
+          songImg.src = caller.parentElement.parentElement.children[0].src;
+          songImg.classList.add("rounded-lg", "h-20", "object-cover", "w-20");
+          songDiv.append(songImg);
+          songDiv.classList.add(
+            "rounded-lg",
+            "border",
+            "border-neutral-200",
+            "bg-white",
+            "flex",
+            "gap-5",
+            "p-2"
+          );
+          var infoDiv = document.createElement("div");
+          var songName = document.createElement("h2");
+          songName.innerText =
+            caller.parentElement.parentElement.children[1].children[0].innerText;
+          songName.classList.add("font-bold", "text-neutral-800");
+          var likeBtn = document.createElement("button");
+          likeBtn.addEventListener("click", () => {
+            haptic();
+          });
+          likeBtn.innerText = "Remove";
+          infoDiv.append(songName);
+          likeBtn.classList.add("text-amber-400", "underline");
+          likeBtn.id = "remove-edit-song-" + songID;
+          favoriteSongsEditTemp[songID] = {};
+          likeBtn.onclick = (e) => {
+            removeEditSong(e);
+            checkForSongSaveBtn();
+          };
+          infoDiv.append(likeBtn);
+          songDiv.append(infoDiv);
+          likedSongs.append(songDiv);
+        }
+      }
+
+      function likeEditArtist(e) {
+        var artistID = e.target.id.substring(12);
+        if (!favoriteArtistsEditTemp.hasOwnProperty(artistID)) {
+          var likedSongs = document.getElementById("my-artists-edit");
+          var caller = e.target;
+          var artistDiv = document.createElement("div");
+          var artistImg = document.createElement("img");
+          artistImg.src = caller.parentElement.parentElement.children[0].src;
+          artistImg.classList.add("rounded-lg", "h-20", "object-cover", "w-20");
+          artistDiv.append(artistImg);
+          artistDiv.classList.add(
+            "rounded-lg",
+            "border",
+            "border-neutral-200",
+            "bg-white",
+            "flex",
+            "gap-5",
+            "p-2"
+          );
+          var infoDiv = document.createElement("div");
+          var artistName = document.createElement("h2");
+          artistName.innerText =
+            caller.parentElement.parentElement.children[1].children[0].innerText;
+          artistName.classList.add("font-bold", "text-neutral-800");
+          var likeBtn = document.createElement("button");
+          likeBtn.addEventListener("click", () => {
+            haptic();
+          });
+          likeBtn.innerText = "Remove";
+          infoDiv.append(artistName);
+          likeBtn.classList.add("text-amber-400", "underline");
+          likeBtn.id = "remove-edit-artist-" + artistID;
+          favoriteArtists[artistID] = {};
+          likeBtn.onclick = (e) => {
+            removeEditArtist(e);
+            checkForArtistSaveBtn();
+          };
+          infoDiv.append(likeBtn);
+          artistDiv.append(infoDiv);
+          likedSongs.append(artistDiv);
+        }
+      }
+
+      function checkForSongSaveBtn() {
+        if (Object.keys(favoriteSongsEditTemp).length >= 5) {
+          var nextBtn = document.getElementById("save-songs-btn");
+          nextBtn.disabled = false;
+          nextBtn.classList.remove("bg-neutral-200");
+          nextBtn.classList.remove("text-neutral-600");
+          nextBtn.classList.add(
+            "bg-amber-400",
+            "text-neutral-800",
+            "font-bold"
+          );
+        } else {
+          var nextBtn = document.getElementById("save-songs-btn");
+          nextBtn.disabled = true;
+          nextBtn.classList.add("bg-neutral-200", "text-neutral-600");
+          nextBtn.classList.remove("bg-amber-400");
+          nextBtn.classList.remove("text-neutral-800");
+          nextBtn.classList.remove("font-bold");
+        }
+      }
+
+      function checkForArtistSaveBtn() {
+        if (Object.keys(favoriteArtistsEditTemp).length >= 5) {
+          var nextBtn = document.getElementById("save-artists-btn");
+          nextBtn.disabled = false;
+          nextBtn.classList.remove("bg-neutral-200");
+          nextBtn.classList.remove("text-neutral-600");
+          nextBtn.classList.add(
+            "bg-amber-400",
+            "text-neutral-800",
+            "font-bold"
+          );
+        } else {
+          var nextBtn = document.getElementById("save-artists-btn");
+          nextBtn.disabled = true;
+          nextBtn.classList.add("bg-neutral-200", "text-neutral-600");
+          nextBtn.classList.remove("bg-amber-400");
+          nextBtn.classList.remove("text-neutral-800");
+          nextBtn.classList.remove("font-bold");
+        }
+      }
+    </script>
+    <link rel="icon" type="image/x-icon" href="/assets/favicon.155239cf.ico" />
+    <link rel="manifest" href="data:application/json;base64,ewogICJuYW1lIjogIkFwcCIsCiAgInNob3J0X25hbWUiOiAiQXBwIiwKICAic3RhcnRfdXJsIjogImluZGV4Lmh0bWwiLAogICJkaXNwbGF5IjogInN0YW5kYWxvbmUiLAogICJpY29ucyI6IFsKICAgIHsKICAgICAgInNyYyI6ICJhc3NldHMvaWNvbnMvaWNvbi00OC53ZWJwIiwKICAgICAgInR5cGUiOiAiaW1hZ2UvcG5nIiwKICAgICAgInNpemVzIjogIjQ4eDQ4IiwKICAgICAgInB1cnBvc2UiOiAiYW55IG1hc2thYmxlIgogICAgfSwKICAgIHsKICAgICAgInNyYyI6ICJhc3NldHMvaWNvbnMvaWNvbi03Mi53ZWJwIiwKICAgICAgInR5cGUiOiAiaW1hZ2UvcG5nIiwKICAgICAgInNpemVzIjogIjcyeDcyIiwKICAgICAgInB1cnBvc2UiOiAiYW55IG1hc2thYmxlIgogICAgfSwKICAgIHsKICAgICAgInNyYyI6ICJhc3NldHMvaWNvbnMvaWNvbi05Ni53ZWJwIiwKICAgICAgInR5cGUiOiAiaW1hZ2UvcG5nIiwKICAgICAgInNpemVzIjogIjk2eDk2IiwKICAgICAgInB1cnBvc2UiOiAiYW55IG1hc2thYmxlIgogICAgfSwKICAgIHsKICAgICAgInNyYyI6ICJhc3NldHMvaWNvbnMvaWNvbi0xMjgud2VicCIsCiAgICAgICJ0eXBlIjogImltYWdlL3BuZyIsCiAgICAgICJzaXplcyI6ICIxMjh4MTI4IiwKICAgICAgInB1cnBvc2UiOiAiYW55IG1hc2thYmxlIgogICAgfSwKICAgIHsKICAgICAgInNyYyI6ICJhc3NldHMvaWNvbnMvaWNvbi0xOTIud2VicCIsCiAgICAgICJ0eXBlIjogImltYWdlL3BuZyIsCiAgICAgICJzaXplcyI6ICIxOTJ4MTkyIiwKICAgICAgInB1cnBvc2UiOiAiYW55IG1hc2thYmxlIgogICAgfSwKICAgIHsKICAgICAgInNyYyI6ICJhc3NldHMvaWNvbnMvaWNvbi0yNTYud2VicCIsCiAgICAgICJ0eXBlIjogImltYWdlL3BuZyIsCiAgICAgICJzaXplcyI6ICIyNTZ4MjU2IiwKICAgICAgInB1cnBvc2UiOiAiYW55IG1hc2thYmxlIgogICAgfSwKICAgIHsKICAgICAgInNyYyI6ICJhc3NldHMvaWNvbnMvaWNvbi01MTIud2VicCIsCiAgICAgICJ0eXBlIjogImltYWdlL3BuZyIsCiAgICAgICJzaXplcyI6ICI1MTJ4NTEyIiwKICAgICAgInB1cnBvc2UiOiAiYW55IG1hc2thYmxlIgogICAgfQogIF0sCiAgImJhY2tncm91bmRfY29sb3IiOiAiIzMxZDUzZCIsCiAgInRoZW1lX2NvbG9yIjogIiMzMWQ1M2QiCn0K" />
+    
+    <meta name="theme-color" content="#31d53d" />
+    <script type="module" crossorigin src="/assets/index.e1c35585.js"></script>
+    <link rel="stylesheet" href="/assets/index.de3e2835.css">
+  </head>
+  <body
+    class="max-w-screen-sm min-h-screen bg-white pt-14 flex flex-col justify-between"
+  >
+    <div
+      id="welcome"
+      class="scn flex grow flex-col hidden items-center justify-center p-5"
+    >
+      <div class="gap-5 flex flex-col">
+        <h1 class="text-4xl font-bold text-neutral-800">welcome to b-side.</h1>
+        <p class="text-neutral-800">
+          Thanks for joining. To start discovering underground tracks, we're
+          going to need to know a little bit about your taste in music.
+        </p>
+        <div class="w-full">
+          <button
+            id="get_started"
+            onclick="changeScn(this.id)"
+            data-target="artists"
+            class="bg-neutral-800 text-white font-bold py-2 px-4 rounded-full max-w-max focus:outline focus:outline-offset-2 focus:outline-white"
+          >
+            Get Started >
+          </button>
+        </div>
+      </div>
+    </div>
+    <div id="artists" class="scn m-5 gap-5 flex flex-col hidden">
+      <h1 class="text-4xl text-neutral-800 font-bold">Favorite Artists</h1>
+      <p class="text-neutral-800">
+        Select at least five of your favorite artists.
+      </p>
+      <div class="flex gap-2 flex-col">
+        <label
+          class="block uppercase tracking-wide text-neutral-700 text-xs font-bold"
+          for="artist-input"
+        >
+          Artist Name
+        </label>
+        <input
+          spellcheck="false"
+          class="appearance-none block w-full bg-neutral-200 text-neutral-700 border border-neutral-200 rounded py-3 px-4 leading-tight focus:outline-none focus:bg-white focus:border-neutral-500"
+          id="artist-input"
+          autocomplete="off"
+          type="text"
+          placeholder="Type your favorite band/artist here..."
+        />
+        <button
+          onclick="searchArtists()"
+          class="bg-neutral-800 text-white font-bold py-2 px-4 rounded-full max-w-max focus:outline focus:outline-offset-2 focus:outline-white"
+        >
+          🔍 Search
+        </button>
+      </div>
+      <div class="flex gap-2 flex-col">
+        <label
+          class="block uppercase tracking-wide text-neutral-700 text-xs font-bold"
+          for="results-div"
+        >
+          Results
+        </label>
+        <div
+          id="results-div"
+          class="rounded-lg p-5 border border-neutral-200 max-h-40 overflow-y-scroll flex flex-col gap-5"
+        >
+          <p class="text-neutral-500">Search for an artist to get results.</p>
+        </div>
+      </div>
+      <div class="flex gap-2 flex-col">
+        <label
+          class="block uppercase tracking-wide text-neutral-700 text-xs font-bold"
+          for="artist-input"
+        >
+          My Artists
+        </label>
+        <div id="my-artists" class="flex flex-col-reverse gap-2"></div>
+      </div>
+      <button
+        id="next-btn"
+        class="bg-neutral-200 py-2 px-4 rounded-full text-neutral-600 max-w-max fixed bottom-14 right-7 focus:scale-90 focus:bg-amber-700 transition-transform"
+        disabled
+        onclick="changeScn(this.id)"
+        data-target="songs"
+      >
+        Next >
+      </button>
+    </div>
+    <div id="songs" class="scn m-5 gap-5 flex flex-col hidden">
+      <h1 class="text-4xl text-neutral-800 font-bold">Favorite Songs</h1>
+      <p class="text-neutral-800">
+        Next, give us at least five of your favorite songs, and
+        your taste will be set.
+      </p>
+      <div class="flex gap-2 flex-col">
+        <label
+          class="block uppercase tracking-wide text-neutral-700 text-xs font-bold"
+          for="artist-input"
+        >
+          Song Name
+        </label>
+        <input
+          spellcheck="false"
+          class="appearance-none block w-full bg-neutral-200 text-neutral-700 border border-neutral-200 rounded py-3 px-4 leading-tight focus:outline-none focus:bg-white focus:border-neutral-500"
+          id="song-input"
+          autocomplete="off"
+          type="text"
+          placeholder="Type your favorite song here..."
+        />
+        <button
+          onclick="searchSongs()"
+          class="bg-neutral-800 text-white font-bold py-2 px-4 rounded-full max-w-max focus:outline focus:outline-offset-2 focus:outline-white"
+        >
+          🔍 Search
+        </button>
+      </div>
+      <div class="flex gap-2 flex-col">
+        <label
+          class="block uppercase tracking-wide text-neutral-700 text-xs font-bold"
+          for="song-results-div"
+        >
+          Results
+        </label>
+        <div
+          id="song-results-div"
+          class="rounded-lg p-5 border border-neutral-200 max-h-40 overflow-y-scroll flex flex-col gap-5"
+        >
+          <p class="text-neutral-500">Search for a song to get results.</p>
+        </div>
+      </div>
+      <div class="flex gap-2 flex-col">
+        <label
+          class="block uppercase tracking-wide text-neutral-700 text-xs font-bold"
+          for="song-input"
+        >
+          My Songs
+        </label>
+        <div id="my-songs" class="flex flex-col-reverse gap-2"></div>
+      </div>
+      <button
+        id="finish-btn"
+        class="bg-amber-400 text-neutral-800 font-bold py-2 px-4 rounded-full max-w-max fixed 14 bottom-14 right-7 focus:scale-90 focus:bg-amber-700 transition-transform"
+      >
+        Finish >
+      </button>
+    </div>
+    <div id="notifsPrompt" class="scn m-5 gap-5 flex flex-col hidden">
+      <h1 class="text-4xl font-bold text-neutral-800">Allow Notifications</h1>
+      <p class="text-neutral-800">
+        To get a reminder about your daily song reccomendation, turn on
+        notifications. This way, you'll know right when your new track is found.
+      </p>
+      <button
+        id="notifsBtn"
+        class="bg-neutral-800 text-white font-bold p-4 rounded-full focus:outline focus:outline-offset-2 focus:outline-white"
+      >
+        Turn On Notifications
+      </button>
+      <button
+        onclick="showHome()"
+        class="bg-white text-neutral-800 font-bold p-4 rounded-full border-neutral-800 border-2"
+      >
+        No Thanks
+      </button>
+    </div>
+    <div id="home" class="scn m-5 gap-5 flex flex-col hidden">
+      <div id="header" class="flex justify-between items-center">
+        <h1 class="text-4xl font-bold text-neutral-800">Home</h1>
+        <button class="nonBtn" onclick="showSettings()">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke-width="1.5"
+            stroke="currentColor"
+            class="w-6 h-6"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z"
+            />
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"
+            />
+          </svg>
+        </button>
+      </div>
+      <div
+        id="pre"
+        class="gap-5 flex flex-col hidden bg-amber-400 p-5 rounded-lg"
+      >
+        <h2 class="font-bold text-2xl text-white">Find My Song</h2>
+        <p class="text-white">
+          Your daily song recommendation is ready. Tap to find your new favorite
+          song.
+        </p>
+        <button
+          id="songRecBtn"
+          onclick="getUndergroundTrack()"
+          class="bg-white text-amber-400 font-bold p-4 rounded-full focus:outline focus:outline-offset-2 focus:outline-white"
+        >
+          Get Song Recommendation
+        </button>
+      </div>
+      <div id="post" class="hidden">
+        <div class="flex gap-3 p-3 rounded-lg bg-amber-100">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke-width="1.5"
+            stroke="currentColor"
+            class="min-w-6 min-h-6 stroke-amber-500 max-w-6 max-h-6"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z"
+            />
+          </svg>
+          <p class="text-amber-500">
+            You have already gotten your daily recommendation. Come back
+            tomorrow for a fresh find.
+          </p>
+        </div>
+        <!--<button id="adsTest" class="bg-white text-neutral-800 font-bold p-4 rounded-full border-neutral-800 border-2">Watch an Ad</button>-->
+      </div>
+      <div class="hidden flex gap-2 flex-col" id="latestRecDiv">
+        <label
+          class="block uppercase tracking-wide text-neutral-700 text-xs font-bold"
+          for="latest-rec"
+        >
+          Latest Recommendation
+        </label>
+        <div id="latest-rec"></div>
+      </div>
+    </div>
+    <div id="settings" class="scn m-5 gap-5 flex flex-col hidden">
+      <div id="header" class="flex justify-between items-center">
+        <h1 class="text-4xl font-bold text-neutral-800">Settings</h1>
+        <button class="nonBtn" onclick="showHome()">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke-width="1.5"
+            stroke="currentColor"
+            class="w-6 h-6"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M6 18 18 6M6 6l12 12"
+            />
+          </svg>
+        </button>
+      </div>
+      <div class="flex flex-col">
+        <button
+          class="border-b border-neutral-200 flex px-2 py-6 justify-between"
+          onclick="changeScn(this.id)"
+          id="about-btn"
+          data-target="about"
+        >
+          <p>About b-side</p>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke-width="1.5"
+            stroke="currentColor"
+            class="w-6 h-6"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="m8.25 4.5 7.5 7.5-7.5 7.5"
+            />
+          </svg>
+        </button>
+        <button
+          class="border-b border-neutral-200 flex px-2 py-6 justify-between"
+          onclick="changeScn(this.id)"
+          id="privacy-btn"
+          data-target="privacy"
+        >
+          <p>Privacy</p>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke-width="1.5"
+            stroke="currentColor"
+            class="w-6 h-6"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="m8.25 4.5 7.5 7.5-7.5 7.5"
+            />
+          </svg>
+        </button>
+        <button
+          class="border-b border-neutral-200 flex px-2 py-6 justify-between"
+          onclick="changeScn(this.id)"
+          id="edit-songs-btn"
+          data-target="edit-songs"
+        >
+          <p>Edit my songs</p>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke-width="1.5"
+            stroke="currentColor"
+            class="w-6 h-6"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="m8.25 4.5 7.5 7.5-7.5 7.5"
+            />
+          </svg>
+        </button>
+        <button
+          class="border-b border-neutral-200 flex px-2 py-6 justify-between"
+          onclick="changeScn(this.id)"
+          id="edit-artists-btn"
+          data-target="edit-artists"
+        >
+          <p>Edit my artists</p>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke-width="1.5"
+            stroke="currentColor"
+            class="w-6 h-6"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="m8.25 4.5 7.5 7.5-7.5 7.5"
+            />
+          </svg>
+        </button>
+      </div>
+    </div>
+    <div id="songRecDisplay" class="scn m-5 gap-5 flex flex-col hidden">
+      <div id="header" class="flex justify-between items-center">
+        <h1 class="text-4xl font-bold text-neutral-800">Today's Song</h1>
+        <button class="nonBtn" onclick="showHome()">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke-width="1.5"
+            stroke="currentColor"
+            class="w-6 h-6"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M6 18 18 6M6 6l12 12"
+            />
+          </svg>
+        </button>
+      </div>
+      <div
+        id="recommended-track"
+        class="flex-col flex gap-3 border border-neutral-200 p-4 rounded-lg"
+      >
+        <div class="rounded-lg bg-neutral-200 w-full h-60 animate-pulse"></div>
+        <div class="rounded-lg bg-neutral-200 w-full h-4 animate-pulse"></div>
+        <div class="rounded-lg bg-neutral-200 w-full h-4 animate-pulse"></div>
+      </div>
+    </div>
+    <div id="about" class="scn m-5 gap-5 flex flex-col hidden">
+      <div id="header" class="flex gap-3 items-center">
+        <button class="nonBtn" onclick="showSettings()">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke-width="1.5"
+            stroke="currentColor"
+            class="w-6 h-6"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M15.75 19.5 8.25 12l7.5-7.5"
+            />
+          </svg>
+        </button>
+        <h1 class="text-4xl font-bold text-neutral-800">About</h1>
+      </div>
+      <p>
+        b-side helps you find unique and underground music from up-and-coming creators, as well as less-loved tracks from well known creators, by recommending a daily song to you each day based on your tastes.
+      </p>
+    </div>
+    <div id="privacy" class="scn m-5 gap-5 flex flex-col hidden">
+      <div id="header" class="flex gap-3 items-center">
+        <button class="nonBtn" onclick="showSettings()">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke-width="1.5"
+            stroke="currentColor"
+            class="w-6 h-6"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M15.75 19.5 8.25 12l7.5-7.5"
+            />
+          </svg>
+        </button>
+        <h1 class="text-4xl font-bold text-neutral-800">Privacy</h1>
+      </div>
+      <p>All data is stored locally on your device, not in any database. No need to worry about us selling data about your taste in music, or anything else.</p>
+    </div>
+    <div id="edit-songs" class="scn m-5 gap-5 flex flex-col hidden">
+      <div id="header" class="flex gap-3 items-center">
+        <button class="nonBtn" onclick="showSettings()">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke-width="1.5"
+            stroke="currentColor"
+            class="w-6 h-6"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M15.75 19.5 8.25 12l7.5-7.5"
+            />
+          </svg>
+        </button>
+        <h1 class="text-4xl font-bold text-neutral-800">Edit My Songs</h1>
+      </div>
+      <div class="flex gap-2 flex-col">
+        <label
+          class="block uppercase tracking-wide text-neutral-700 text-xs font-bold"
+          for="song-edit-input"
+        >
+          Add Songs
+        </label>
+        <input
+          spellcheck="false"
+          class="appearance-none block w-full bg-neutral-200 text-neutral-700 border border-neutral-200 rounded py-3 px-4 leading-tight focus:outline-none focus:bg-white focus:border-neutral-500"
+          id="song-edit-input"
+          autocomplete="off"
+          type="text"
+          placeholder="Type your favorite song here..."
+        />
+        <button
+          onclick="searchEditSongs()"
+          class="bg-neutral-800 text-white font-bold py-2 px-4 rounded-full max-w-max focus:outline focus:outline-offset-2 focus:outline-white"
+        >
+          🔍 Search
+        </button>
+      </div>
+      <div class="flex gap-2 flex-col">
+        <label
+          class="block uppercase tracking-wide text-neutral-700 text-xs font-bold"
+          for="song-edit-results-div"
+        >
+          Results
+        </label>
+        <div
+          id="song-edit-results-div"
+          class="rounded-lg p-5 border border-neutral-200 max-h-40 overflow-y-scroll flex flex-col gap-5"
+        >
+          <p class="text-neutral-500">Search for a song to get results.</p>
+        </div>
+      </div>
+      <div class="flex gap-2 flex-col">
+        <label
+          class="block uppercase tracking-wide text-neutral-700 text-xs font-bold"
+        >
+          My Songs
+        </label>
+        <div id="my-songs-edit" class="flex flex-col-reverse gap-2"></div>
+      </div>
+      <button
+        id="save-songs-btn"
+        class="bg-neutral-200 py-2 px-4 rounded-full text-neutral-600 max-w-max fixed bottom-14 right-7 focus:scale-90 focus:bg-amber-700 transition-transform"
+        disabled
+      >
+        Save
+      </button>
+    </div>
+    <div id="edit-artists" class="scn m-5 gap-5 flex flex-col hidden">
+      <div id="header" class="flex gap-3 items-center">
+        <button class="nonBtn" onclick="showSettings()">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke-width="1.5"
+            stroke="currentColor"
+            class="w-6 h-6"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M15.75 19.5 8.25 12l7.5-7.5"
+            />
+          </svg>
+        </button>
+        <h1 class="text-4xl font-bold text-neutral-800">Edit My Artists</h1>
+      </div>
+      <div class="flex gap-2 flex-col">
+        <label
+          class="block uppercase tracking-wide text-neutral-700 text-xs font-bold"
+          for="artist-edit-input"
+        >
+          Add Artist
+        </label>
+        <input
+          spellcheck="false"
+          class="appearance-none block w-full bg-neutral-200 text-neutral-700 border border-neutral-200 rounded py-3 px-4 leading-tight focus:outline-none focus:bg-white focus:border-neutral-500"
+          id="artist-edit-input"
+          autocomplete="off"
+          type="text"
+          placeholder="Type your favorite band/artist here..."
+        />
+        <button
+          onclick="searchEditArtists()"
+          class="bg-neutral-800 text-white font-bold py-2 px-4 rounded-full max-w-max focus:outline focus:outline-offset-2 focus:outline-white"
+        >
+          🔍 Search
+        </button>
+      </div>
+      <div class="flex gap-2 flex-col">
+        <label
+          class="block uppercase tracking-wide text-neutral-700 text-xs font-bold"
+          for="artist-edit-results-div"
+        >
+          Results
+        </label>
+        <div
+          id="artist-edit-results-div"
+          class="rounded-lg p-5 border border-neutral-200 max-h-40 overflow-y-scroll flex flex-col gap-5"
+        >
+          <p class="text-neutral-500">Search for an artist to get results.</p>
+        </div>
+      </div>
+      <div class="flex gap-2 flex-col">
+        <label
+          class="block uppercase tracking-wide text-neutral-700 text-xs font-bold"
+        >
+          My Artists
+        </label>
+        <div id="my-artists-edit" class="flex flex-col-reverse gap-2"></div>
+      </div>
+      <button
+        id="save-artists-btn"
+        class="bg-neutral-200 py-2 px-4 rounded-full text-neutral-600 max-w-max fixed bottom-14 right-7 focus:scale-90 focus:bg-amber-700 transition-transform"
+        disabled
+      >
+        Save
+      </button>
+    </div>
+  </body>
+  
+  
+  
+  
+</html>
